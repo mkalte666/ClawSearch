@@ -2,6 +2,7 @@ import socket
 import Queue
 import thread
 import time
+import re
 
 class fetcher:
 	def __init__(self, maxthreads):
@@ -30,7 +31,7 @@ class fetcher:
 		while self.running == True:
 			item = self.fetched.get()
 			for handler in self.DataHandlers:
-				handler(self, item)
+				handler(item[0], item[1], item[2])
 	
 	def FetchManagerWorker(self):
 		while self.running == True:
@@ -53,7 +54,7 @@ class fetcher:
 				if c == '':
 					break
 				result += c
-			self.fetched.put((item[0]+item[2], result))
+			self.fetched.put((item[0],item[2], result))
 		except:
 			print("warning, fetching error!")
 			pass

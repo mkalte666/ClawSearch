@@ -1,51 +1,100 @@
 import fetcher
-import os.path
-	
-class site:
-	def __init__(self, data):
-		self.name = data[0]
-		self.content = data[2]
-		self.meta = data[1]
-    
-	def serialize(self):
-		result = "SITE<"+base64.b64encode(self.name)+">"
-		result += "META<"
-		for m in self.meta:
-		result += base64.b64encode(m[0])+"["+base64.b64encode(m[1])+"]"
-		result += ">CONTENT<"
-		result += base64.b64encode(self.content)+">\n"
-		return result
+import index
+import Queue
+import re
 
-	def deserializeSite(s):
-		rawE = re.compile(ur'SITE<(/?[\w\.\/\?\=\-\&]*)>META<([A-Za-z0-9+-=\[\]]*)>CONTENT<([A-Za-z0-9+-=]*)>')
-		m = rawE.match(s)
-		if m == None:
-			return None
-		title = base64.b64decode(m.group(1))
-		raw_meta = m.group(2)
-		meta = []
-		metaE = re.compile(ur'([A-Za-z0-9+-=]*)\[([A-Za-z0-9+-=]*)\]')
-		metaPairs = metaE.findall(raw_meta)
-		for metaPair in metaPairs:
-			meta.append((base64.b64decode(metaPair[0]),base64.b64decode(metaPair[1])))
-		content = base64.b64decode(m.group(3))
-		newsite = site((title, meta, content))
-		return newsite
-
-class domain:
-	def __init__(self, name):
-		self.sites = []
-		self.name = name
-		if os.path.isfile("index/domaindb/"+name)==True:
-			content = []
-			with open("index/domaindb/"+name,"r") as f
-				content = f.readlines()
-			for line in content:
-				self.sites.append(site.deserializeSite(line))
-			
-	def AddSite
+metaRE = re.compile(ur'<\s*meta\s*name\s*=\s*"([\w\s]*)"\s*content\s*=\s*"([\w\s+#*.\'"@,-]*)')
+styleRE = re.compile(ur'<\s*style[\w\s="\/\\:;()\[\]@.!-]*>.*<\s*/\s*style[\w\s="\/\\:;()\[\]@.!-]*>', re.DOTALL)
+scriptRE = re.compile(ur'<\s*script[\w\s="\/\\:;()\[\]@.!-]*>.*<\s*/\s*script[\w\s="\/\\:;()\[\]@.!-]*>', re.DOTALL)
+tagRE = re.compile(ur'<[\w\s="\/\\:;()\[\]@.!-]*>')
+#linkRE = re.compile(ur'https?://([\w@.-]*):?(\d*)?([\w@\/#?&=:.-]*)')
+linkRE = re.compile(ur'h?t?t?p?:?//([\w@.-]*):?(\d*)?([\w@\/#?&=:.-]*)')
+localLinkTagRE = re.compile(ur'\s*href\s*=\s*"(/?[\w@?&=:.-]+[\w@?\/&=:.-]*)[\w@\/#?&=:.-]*"')
+wordRE = re.compile(ur'(\w\w*)')
 
 class crawler:
-	def __init__():
-		self.fetcher = fetcher.fetcher()
+	def __init__(self, StayOnDomain=False, maxsites=None):
+		self.fetcher = fetcher.fetcher(20)
 
+		self.domains = dict()
+		self.words = dict()
+		
+		self.domainOnly = StayOnDomain
+		self.startdomain = ""
+		self.maxsites = maxsites
+		
+		self.input = Queue.Queue()
+		self.visited = []
+		
+		self.fetcher.AddHandler(self.ParsePage)
+		
+	def ParsePage(self, domainname, sitename, content):
+		#get meta-tags
+		meta = []
+		mlist = metaRE.findall(content)
+		for m in mlist:
+			meta.append((m[0], m[1]))
+		
+		#check if page has updated
+		if domainname not in self.domains:
+			self.domains[domainname] = index.domain(domainname)	
+		d = self.domains[domainname]
+		
+		ParseSite = False
+		if d.HasSite(sitename):
+			ParseSite = d.HasSiteChanged(sitename, meta, content)
+		else: 
+			ParseSite = True
+			d.AddSite(sitename, meta, content)
+			
+		#DONT, ONLY TESTING
+		d.Save()
+		
+		if ParseSite == True:
+			#fetch the links from the page
+			mlist = linkRE.findall(content)
+			for m in mlist:
+				#input all the links!
+				port = 80
+				if m[1] != "":
+					port = int(m[1])
+				self.Input(m[0], port, m[2])
+			#local links, too, after removing normal links
+			FewLinkContent = linkRE.sub("", content)
+			mlist = localLinkTagRE.findall(FewLinkContent)
+			for m in mlist:
+				port = 80
+				self.Input(domainname, port, m)
+			#remove tags (tag blocks need seperate magic :/)
+			textOnly = tagRE.sub("", scriptRE.sub("", styleRE.sub("", FewLinkContent)))
+			
+			#get words
+			mlist = wordRE.findall(textOnly)
+			for m in mlist:
+				#create all the words!!
+				if m not in self.words:
+					self.words[m] = index.word(m)
+				w = self.words[m]
+				w.AddSite(domainname, sitename)
+				#DONT
+				w.Save()
+		#done
+		print("DONE:"+domainname+sitename)	
+			
+	def Input(self, domainname, port, sitename):
+		#do nothing if we already visited that page and stuff
+		if self.maxsites != None:
+			self.maxsites-=1
+			if self.maxsites<0:
+				return
+		
+		if (domainname, sitename) in self.visited:
+			return
+		if self.startdomain == "":
+			self.startdomain = domainname
+		if self.domainOnly == True and self.startdomain != domainname:
+			return
+		
+		self.visited.append((domainname, sitename))
+		self.fetcher.Fetch((domainname, port, sitename))
+		print(domainname+sitename)

@@ -1,20 +1,11 @@
-import socket
+import crawler
 
-s = socket.socket()
+c = crawler.crawler(True, 100)
+c.Input("de.wikipedia.org", 80, "/wiki/Base64")
 
-s.connect(("bee-more-random.tk", 80))
-
-s.send("GET / HTTP/1.1\n")
-s.send("Host: bee-more-random.tk\n\n")
-
-b = "" 
 while True:
-	c = s.recv(1)
-	if c == '\n':
-		print b
-		b = ""
-	elif c == '':
-		print b
-		break
-	else:
-		b+=c	
+	try:
+		pass
+	except KeyboardInterrupt:
+		for d in c.domains:
+			d.Save()
