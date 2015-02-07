@@ -45,7 +45,7 @@ class search:
 				
 		#search the meta data of each page
 		for s in word.sites:
-			m = splitRE.match(self.sites[s].name)
+			m = splitRE.search(self.sites[s].name)
 			dname = m.group(1)
 			sname = m.group(2)
 			d = index.domain(dname)

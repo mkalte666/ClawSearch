@@ -44,16 +44,22 @@ class fetcher:
 		try:
 			s = socket.socket()
 			s.connect((item[0], item[1]))
-			s.send("GET "+item[2]+" HTTP/1.1\n")
+			s.send("GET "+item[2]+" HTTP/1.0\n")
+			s.send("User-Agent: ClawSearchBot\n")
 			s.send("Host: "+item[0]+"\n\n")
+			s.send("Connection: Close")
 			
 			result = ""
 			endtime = time.time()+timeout
 			while time.time()<endtime:
 				c = s.recv(1)
-				if c == '':
-					break
 				result += c
+				if c=='':
+					break	
+			lenRE = re.compile(ur'Content-Length:\s*(\d*)')
+			m = lenRE.search(result)
+			if m!= None:
+				result = result[0-int(m.group(1)):]
 			self.fetched.put((item[0],item[2], result))
 		except:
 			print("warning, fetching error!")
