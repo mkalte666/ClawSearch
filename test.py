@@ -1,7 +1,7 @@
 import crawler
 
-c = crawler.crawler(True, 100)
-c.Input("de.wikipedia.org", 80, "/wiki/Base64")
+c = crawler.crawler(True, 1000)
+c.Input("de.wikipedia.org", 80, "/wiki/Programmierung")
 
 while True:
 	try:
