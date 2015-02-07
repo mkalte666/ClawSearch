@@ -3,6 +3,7 @@ import os.path
 import base64
 import re
 import xxhash
+import time
 
 _hasher = xxhash.xxh64()
 def conent_hash(str):
@@ -55,6 +56,8 @@ class domain:
 					newSite = deserializeSite(line)
 					if newSite != None:
 						self.sites.append(newSite)
+				#file system takes some time... better wait for it
+				time.sleep(0.02)
 			else:
 				f = open("index/domaindb/"+base64.urlsafe_b64encode(name),"w")
 				f.close()
@@ -90,6 +93,8 @@ class domain:
 				for s in self.sites:
 					f.write(s.serialize()+"\n")
 				f.close()
+			#file system takes some time... better wait for it
+			time.sleep(0.02)
 		except:
 			print("Could not save domain +"+self.name)
 class word:
@@ -104,6 +109,8 @@ class word:
 				for line in content:
 					m = wordSiteRE.match(line)
 					self.sites[base64.b64decode(m.group(1))] = int(m.group(2))
+				#file system takes some time... better wait for it
+				time.sleep(0.02)
 			else:
 				f = open("index/worddb/"+base64.urlsafe_b64encode(name),"w")
 				f.close()
@@ -117,8 +124,11 @@ class word:
 	def Save(self):
 		try:
 			with open("index/worddb/"+base64.urlsafe_b64encode(self.name),"w") as f:
+				#print("saved word "+self.name)
 				for s in self.sites:
 					f.write(base64.b64encode(s)+"<"+str(self.sites[s])+">\n")
 				f.close()
+			#file system takes some time... better wait for it
+			time.sleep(0.02)
 		except:
 			print("Could not save Word "+self.name)

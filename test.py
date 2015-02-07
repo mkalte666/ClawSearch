@@ -1,7 +1,7 @@
 import crawler
 
 c = crawler.crawler(True, 1000)
-c.Input("de.wikipedia.org", 80, "/wiki/Programmierung")
+c.Input("blog.fefe.de", 80, "/")
 
 while True:
 	try:
