@@ -94,7 +94,7 @@ class domain:
 					f.write(s.serialize()+"\n")
 				f.close()
 			#file system takes some time... better wait for it
-			time.sleep(0.02)
+			#time.sleep(0.02)
 		except:
 			print("Could not save domain +"+self.name)
 class word:
@@ -129,6 +129,6 @@ class word:
 					f.write(base64.b64encode(s)+"<"+str(self.sites[s])+">\n")
 				f.close()
 			#file system takes some time... better wait for it
-			time.sleep(0.02)
+			#time.sleep(0.02)
 		except:
 			print("Could not save Word "+self.name)

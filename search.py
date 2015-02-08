@@ -17,10 +17,11 @@ def _mutator(str):
 	return out
 
 class ratedSite:
-	def __init__(self, name):
+	def __init__(self, name, title=""):
 		self.name = name
 		self.rating = 0
-	
+		self.title = title
+		
 	def Inc(self, n=1):
 		self.rating+=n
 class search:
@@ -44,13 +45,25 @@ class search:
 				self.sites[s].Inc(word.sites[s])
 				
 		#search the meta data of each page
-		for s in word.sites:
+		for s in self.sites:
 			m = splitRE.search(self.sites[s].name)
 			dname = m.group(1)
-			sname = m.group(2)
+			sname = m.group(3)
 			d = index.domain(dname)
 			
-			
+			ds = d.GetSite(sname)
+			meta = ds.meta
+			for k,v in meta:
+				if k=="title":
+					self.sites[s].title = v
+					for w in searchWords:
+						if v.find(w)!=-1:
+							self.sites[s].Inc(8)
+				for w in searchWords:
+					for mutated in _mutator(w):
+						if v.find(mutated)!=-1:
+							self.sites[s].Inc(5)	
+					
 		sortedList = sorted(self.sites, key=lambda rs: self.sites[rs].rating, reverse=True)
 		for key in sortedList:
-			print(self.sites[key].name)
+			print(self.sites[key].title+": "+self.sites[key].name)

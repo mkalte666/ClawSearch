@@ -3,15 +3,18 @@ import index
 import Queue
 import re
 import thread
+import time
 
 metaRE = re.compile(ur'<\s*meta\s*name\s*=\s*"([\w\s]*)"\s*content\s*=\s*"([\w\s+#*.\'"@,-]*)')
 styleRE = re.compile(ur'<\s*style[\w\s="\/\\:;()\[\]@.!-]*>.*<\s*/\s*style[\w\s="\/\\:;()\[\]@.!-]*>', re.DOTALL)
 scriptRE = re.compile(ur'<\s*script[\w\s="\/\\:;()\[\]@.!-]*>.*<\s*/\s*script[\w\s="\/\\:;()\[\]@.!-]*>', re.DOTALL)
-tagRE = re.compile(ur'<[\w\s="\/\\:;()\[\]@.!-]*>')
+tagRE = re.compile(ur'(<[\w\s="\/\\:;()\[\]@.!-]*>)')
 #linkRE = re.compile(ur'https?://([\w@.-]*):?(\d*)?([\w@\/#?&=:.-]*)')
 linkRE = re.compile(ur'h?t?t?p?:?//([\w@.-]*):?(\d*)?([\w@\/#?&=:.-]*)')
 localLinkTagRE = re.compile(ur'\s*href\s*=\s*"(/?[\w@?&=:.-]+[\w@?\/&=:.-]*)[\w@\/#?&=:.-]*"')
-wordRE = re.compile(ur'(\w\w*)')
+wordRE = re.compile(ur'(\w+)')
+titleRE = re.compile(ur'<\s*title\s*>\s*(.*)\s*<\s*\/\s*title\s*>')
+NotAWord = ["", "\n", "\t"]
 
 class crawler:
 	def __init__(self, StayOnDomain=False, maxsites=None, maxthreads=10):
@@ -29,6 +32,8 @@ class crawler:
 		self.input = Queue.Queue()
 		self.visited = []
 		
+		self.avtime = 0
+		
 		self.fetcher.AddHandler(self.ParsePage)
 	
 	def ParsePage(self, domainname, sitename, content):
@@ -38,13 +43,19 @@ class crawler:
 	
 	def ParsePageWorker(self, domainname, sitename, content):
 		self.curthreads += 1
+		starttime = time.time()
 		try:
 			#get meta-tags
 			meta = []
 			mlist = metaRE.findall(content)
 			for m in mlist:
 				meta.append((m[0], m[1]))
-			
+			#title is stored in the meta, too
+			title = ""
+			m = titleRE.search(content)
+			if m != None:
+				title = m.group(1)
+			meta.append(("title", title))
 			#check if page has updated
 			if domainname not in self.domains:
 				self.domains[domainname] = index.domain(domainname)	
@@ -58,7 +69,7 @@ class crawler:
 				d.AddSite(sitename, meta, content)
 				
 			#DONT, ONLY TESTING
-			d.Save()
+			#d.Save()
 			
 			if ParseSite == True:
 				#fetch the links from the page
@@ -79,7 +90,10 @@ class crawler:
 				textOnly = tagRE.sub("", scriptRE.sub("", styleRE.sub("", FewLinkContent)))
 				
 				#get words
+				#regex way, seems to be slower
 				mlist = wordRE.findall(textOnly)
+				#internal way, currently used for speed testing, seems to be slower
+				#mlist = [e for e in textOnly.split(" ") if e not in NotAWord]
 				for m in mlist:
 					#create all the words!!
 					if m not in self.words:
@@ -87,11 +101,15 @@ class crawler:
 					w = self.words[m]
 					w.AddSite(domainname, sitename)
 					#DONT
-					w.Save()
+					#w.Save()
 			#done
-				print("DONE:"+domainname+sitename)	
+			print("DONE:"+domainname+sitename+" In "+str(time.time()-starttime)+"s")	
+			if self.avtime != 0:
+				self.avtime += time.time()-starttime
+				self.avtime *= 0.5
 			else:
-				print("DONE (no update):"+domainname+sitename)	
+				self.avtime = time.time()-starttime
+			print("AV being "+str(self.avtime))
 		except:
 			print("Error parsing "+domainname+sitename)
 		finally:
