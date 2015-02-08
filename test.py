@@ -2,8 +2,8 @@
 import crawler
 import signal
 import sys
-c = crawler.crawler(False, 50000)
-c.Input("www.sdamned.com", 80, "/")
+c = crawler.crawler(True, 1000)
+c.Input("de.wikipedia.org", 80, "/wiki/Programmierung")
 
 
 

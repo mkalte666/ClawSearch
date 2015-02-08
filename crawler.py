@@ -18,8 +18,8 @@ titleRE = re.compile(ur'<\s*title\s*>\s*(.*)\s*<\s*\/\s*title\s*>')
 NotAWord = ["", "\n", "\t"]
 
 class crawler:
-	def __init__(self, StayOnDomain=False, maxsites=None, maxthreads=10):
-		self.fetcher = fetcher.fetcher(10)
+	def __init__(self, StayOnDomain=False, maxsites=None, maxthreads=5):
+		self.fetcher = fetcher.fetcher(5)
 
 		self.domains = dict()
 		self.words = dict()
