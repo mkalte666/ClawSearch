@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import fetcher
 import os.path
 import base64
@@ -126,7 +127,7 @@ class word:
 			with open("index/worddb/"+base64.urlsafe_b64encode(self.name),"w") as f:
 				#print("saved word "+self.name)
 				for s in self.sites:
-					f.write(base64.b64encode(s)+"<"+str(self.sites[s])+">\n")
+					f.write(base64.b64encode(s)+"<"+unicode(self.sites[s])+">\n")
 				f.close()
 			#file system takes some time... better wait for it
 			#time.sleep(0.02)

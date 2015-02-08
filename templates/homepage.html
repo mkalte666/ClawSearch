@@ -1,0 +1,52 @@
+<html>
+	<head>
+		<title>ClawSearch</title>
+		<script type="text/javascript">
+			function search() {
+				document.getElementById('resultFrameTag').src = "/search/?q="+document.getElementById('searchInput').value;
+			}
+		</script>
+		<style type="text/css">
+			body {
+				background-color: #eeeeee;
+				
+			}
+			button {
+				width: 150px;
+				height: 30px;
+				border-radius: 10px;
+				border-style: none;
+			}
+			#headline {
+				text-align: center;
+				font-size: 50px;
+			}
+			#search {
+				margin-top: 10px;
+				text-align: center;
+			}
+			#resultframe {
+				position: absolute;
+				width: 100%;
+				margin-top: 10px;
+				height: 100%;
+			}
+			#resultframe iframe {
+				position: absolute;
+				width: 100%;
+				border: none;
+				border-style:none;
+				text-align: left;
+				min-height: 50%;
+				height: 100%;
+				
+			}
+		</style>
+	</head>
+	<body>
+		<div id="headline">Claw Search - an experimental search engine</div>
+		<div id="search">Search: <input type="text" name="search" id="searchInput" /><button onClick="search()">GO!</button></div>
+		<div id="resultframe">
+			<iframe id="resultFrameTag" src=""></iframe>
+		</div>
+	</body>

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import crawler
 import signal
 import sys
@@ -8,7 +9,7 @@ c.Input("www.sdamned.com", 80, "/")
 
 def escapeHandler(signum, frame):
 	try:
-		print("AVERGE PARSE TIME:"+str(c.avtime)+"s")
+		print("AVERGE PARSE TIME:"+unicode(c.avtime)+"s")
 		for d in c.domains:
 			try:
 				c.domains[d].Save()

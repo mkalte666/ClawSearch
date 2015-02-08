@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import index
 import re
 
@@ -88,11 +89,11 @@ class search:
 		sortedList = sorted(self.sites, key=lambda rs: self.sites[rs].rating, reverse=True)
 		
 		for key in sortedList:
-			res = "<a href=\"http://"+self.sites[key].name+"\">"+self.sites[key].title+"</a> Rating: "+str(self.sites[key].rating)+"<br>"
+			res = "<a href=\"http://"+self.sites[key].name+"\" target=\"_blank\">"+self.sites[key].title+"</a> Rating: "+unicode(self.sites[key].rating)+"<br>"
 			self.results.append(res)
 		
-	def Write(self, file):
-		with open(file, "w") as f:
-			for r in self.results:
-				f.write(r+"\n")
-			f.close()
+	def Write(self):
+		f=""
+		for r in self.results:
+			f+=r+"\n"
+		return f

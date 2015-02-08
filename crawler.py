@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import fetcher
 import index
 import Queue
@@ -103,13 +104,13 @@ class crawler:
 					#DONT
 					#w.Save()
 			#done
-			print("DONE:"+domainname+sitename+" In "+str(time.time()-starttime)+"s")	
+			print("DONE:"+domainname+sitename+" In "+unicode(time.time()-starttime)+"s")	
 			if self.avtime != 0:
 				self.avtime += time.time()-starttime
 				self.avtime *= 0.5
 			else:
 				self.avtime = time.time()-starttime
-			print("AV being "+str(self.avtime))
+			print("AV being "+unicode(self.avtime))
 		except:
 			print("Error parsing "+domainname+sitename)
 		finally:
