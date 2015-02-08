@@ -97,7 +97,7 @@ class domain:
 			#file system takes some time... better wait for it
 			#time.sleep(0.02)
 		except:
-			print("Could not save domain +"self.name)
+			print("Could not save domain "+self.name)
 class word:
 	def __init__(self, name):
 		self.name = name
