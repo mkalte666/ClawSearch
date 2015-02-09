@@ -118,19 +118,19 @@ class crawler:
 			self.curthreads -= 1
 	
 	def Input(self, domainname, port, sitename):
-		#do nothing if we already visited that page and stuff
-		if self.maxsites != None:
-			self.maxsites-=1
-			if self.maxsites<0:
-				return
-		
 		if (domainname, sitename) in self.visited:
 			return
 		if self.startdomain == "":
 			self.startdomain = domainname
 		if self.domainOnly == True and self.startdomain != domainname:
 			return
-		
+			
+		#do nothing if we already visited that page and stuff
+		if self.maxsites != None:
+			self.maxsites-=1
+			if self.maxsites<0:
+				return
+
 		self.visited.append((domainname, sitename))
 		self.fetcher.Fetch((domainname, port, sitename))
 		print(domainname+sitename)
