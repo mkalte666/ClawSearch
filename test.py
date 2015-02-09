@@ -2,24 +2,17 @@
 import crawler
 import signal
 import sys
-c = crawler.crawler(True, 1000)
+c = crawler.crawler(False, 50000, 20)
+c.Input("blog.fefe.de", 80, "/")
 c.Input("de.wikipedia.org", 80, "/wiki/Programmierung")
-
-
+c.Input("stackoverflow.com", 80, "/")
+c.Input("Bbc.co.uk", 80, "/")
+c.Input("www.sdamned.com", 80, "/")
 
 def escapeHandler(signum, frame):
 	try:
 		print("AVERGE PARSE TIME:"+unicode(c.avtime)+"s")
-		for d in c.domains:
-			try:
-				c.domains[d].Save()
-			except:
-				pass
-		for w in c.words:
-			try:
-				c.words[w].Save()
-			except:
-				pass
+		c.indexer.Save()
 		exit()
 	except:
 		exit()

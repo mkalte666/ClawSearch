@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 import index
 import re
+import sys
+import cgi
+reload(sys)
+sys.setdefaultencoding("utf-8")
 
 splitRE = re.compile(ur'([\w@.-]*):?(\d*)?([\w@\/#?&=:.-]*)')
 
@@ -26,8 +30,9 @@ class ratedSite:
 	def Inc(self, n=1):
 		self.rating+=n
 class search:
-	def __init__(self, q, maxsites=20, maxPeakFactor=3):
+	def __init__(self, indexer, q, maxsites=0, maxPeakFactor=0):
 		#get all sites with the words
+		self.indexer = indexer
 		self.words = []
 		self.sites = dict()
 		self.domains = dict()
@@ -40,13 +45,14 @@ class search:
 			#this is ok since it causes a the right spelling to have the most right in the rating
 			#for mutated in _mutator(w):
 			#	self.words.append(index.word(mutated))
-			self.words.append(index.word(w))
+			self.words.append(self.indexer.GetWord(w))
 			
 		firstWord = self.words[0]
 		for s in firstWord.sites:
-			self.sites[s] = ratedSite(s)
+			if s not in self.sites:
+				self.sites[s] = ratedSite(s)
 			self.sites[s].Inc(firstWord.sites[s])
-			if len(self.sites)>=self.peaksites:
+			if len(self.sites)>=self.peaksites and self.maxsites:
 				break
 			
 		for word in self.words[1:]:
@@ -58,7 +64,7 @@ class search:
 				self.sites[s].Inc(word.sites[s])
 		
 		
-		if len(self.sites) > self.maxsites:
+		if len(self.sites) > self.maxsites and self.maxsites != 0:
 			sortedKeys = sorted(self.sites, key=lambda rs: self.sites[rs].rating, reverse=True)[:self.maxsites]
 			outdict = dict()
 			for k in sortedKeys:
@@ -69,7 +75,7 @@ class search:
 			m = splitRE.search(self.sites[s].name)
 			dname = m.group(1)
 			sname = m.group(3)
-			d = index.domain(dname)
+			d = self.indexer.GetDomain(dname)
 			
 			ds = d.GetSite(sname)
 			if ds == None:
@@ -89,7 +95,13 @@ class search:
 		sortedList = sorted(self.sites, key=lambda rs: self.sites[rs].rating, reverse=True)
 		
 		for key in sortedList:
-			res = "<a href=\"http://"+self.sites[key].name+"\" target=\"_blank\">"+self.sites[key].title+"</a> Rating: "+unicode(self.sites[key].rating)+"<br>"
+			title = cgi.escape(self.sites[key].title)
+			if title == "":
+				title = cgi.escape(self.sites[key].name)
+			if len(title) > 100:
+				title = title[:93]+"..."
+			res = "<a href=\"http://"+cgi.escape(self.sites[key].name)+"\" target=\"_blank\">"+title+"</a> Rating: "+str(self.sites[key].rating)+"<br>"
+			#print(self.sites[key].title)
 			self.results.append(res)
 		
 	def Write(self):

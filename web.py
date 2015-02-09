@@ -6,6 +6,9 @@ from flask import Flask, render_template, session, redirect, url_for, escape, re
 app = Flask(__name__)
 
 import search
+import index
+
+indexer = index.indexer()
 
 def StartWeb(shouldDebug=False):
 	app.debug=shouldDebug
@@ -15,8 +18,8 @@ def StartWeb(shouldDebug=False):
 	
 def runSearch(getArgs):
 	q=getArgs("q")
-	s = search.search(q, 30, 4)
-	return unicode(s.Write())
+	s = search.search(indexer, q)
+	return s.Write()
 
 @app.route('/')
 def home():

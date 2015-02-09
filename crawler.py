@@ -18,9 +18,10 @@ titleRE = re.compile(ur'<\s*title\s*>\s*(.*)\s*<\s*\/\s*title\s*>')
 NotAWord = ["", "\n", "\t"]
 
 class crawler:
-	def __init__(self, StayOnDomain=False, maxsites=None, maxthreads=5):
-		self.fetcher = fetcher.fetcher(5)
-
+	def __init__(self, StayOnDomain=False, maxsites=None, maxWorkThreads=10, fetchToWorkRatio = 0.25):
+		self.fetcher = fetcher.fetcher(int(fetchToWorkRatio*maxWorkThreads))
+		self.indexer = index.indexer()
+		
 		self.domains = dict()
 		self.words = dict()
 		
@@ -28,7 +29,7 @@ class crawler:
 		self.startdomain = ""
 		self.maxsites = maxsites
 		
-		self.maxthreads = maxthreads
+		self.maxthreads = maxWorkThreads
 		self.curthreads = 0
 		self.input = Queue.Queue()
 		self.visited = []
@@ -59,7 +60,7 @@ class crawler:
 			meta.append(("title", title))
 			#check if page has updated
 			if domainname not in self.domains:
-				self.domains[domainname] = index.domain(domainname)	
+				self.domains[domainname] = self.indexer.GetDomain(domainname)	
 			d = self.domains[domainname]
 			
 			ParseSite = False
@@ -98,7 +99,7 @@ class crawler:
 				for m in mlist:
 					#create all the words!!
 					if m not in self.words:
-						self.words[m] = index.word(m)
+						self.words[m] = self.indexer.GetWord(m)
 					w = self.words[m]
 					w.AddSite(domainname, sitename)
 					#DONT
