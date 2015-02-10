@@ -5,6 +5,7 @@ import base64
 import re
 import xxhash
 import time
+import struct
 
 _hasher = xxhash.xxh64()
 def conent_hash(str):
@@ -12,30 +13,41 @@ def conent_hash(str):
 	return _hasher.hexdigest()
 
 wordSiteRE = re.compile(ur'([A-Za-z0-9+-=\[\]]*)<(\d*)>')
-domainSiteRE = re.compile(ur'SITE<([A-Za-z0-9+-=\[\]]*)>META<([A-Za-z0-9+-=\[\]]*)>CONTENT<([A-Za-z0-9+-=]*)>')
-domainRE = re.compile(ur'DOMAIN<([A-Za-z0-9+-=\[\]]*)>SITES<([A-Za-z0-9+-=]*)>')
-wordRE = re.compile(ur'WORD<([A-Za-z0-9+-=\[\]]*)>SITES<([A-Za-z0-9+-=]*)>')
+domainSiteRE = re.compile(ur'|([A-Za-z0-9+-=\[\]]*)|([A-Za-z0-9+-=\[\]]*)|([A-Za-z0-9+-=]*)|([A-Za-z0-9+-=]*)')
+domainRE = re.compile(ur'|([A-Za-z0-9+-=\[\]]*)|([A-Za-z0-9+-=]*)')
+wordRE = re.compile(ur'|([A-Za-z0-9+-=]*)')
 metaRE = re.compile(ur'([A-Za-z0-9+-=]*)\[([A-Za-z0-9+-=]*)\]')
 
 def decode(s):
 	return (base64.b64decode(s))
 
+def encode(s):
+	return (base64.b64encode(s))
+
 class site:
-	def __init__(self, data):
+	def __init__(self, data, worddata):
 		self.name = data[0]
 		self.content = data[2]
 		self.meta = data[1]
-    
+		self.words = worddata[0]
+		self.wordCounts = worddata[1]
+		
 	def serialize(self):
-		result = "SITE<"+base64.b64encode(self.name)+">"
-		result += "META<"
+		result = "|"+encode(self.name)
+		result += "|"
 		for m in self.meta:
-			result += base64.b64encode(m[0])+"["+base64.b64encode(m[1])+"]"
-		result += ">CONTENT<"
-		result += base64.b64encode(self.content)+">"
+			result += encode(m[0])+"["+encode(m[1])+"]"
+		result += "|"
+		result += encode(self.content)+"|"
+		worddata = ""
+		for i in range(0,len(self.words)):
+			Qbytes = struct.pack('Q', bytes, self.words[i].id)
+			Hbytes = struct.pack('H', bytes, self.wordCounts[i])
+			worddata += "|"+encode(Qbytes[2:]+Hbytes)
+		result+=encode(worddata)
 		return result
 
-def deserializeSites(s):
+def deserializeSites(indexerInstance,s):
 	siteList = []
 	mList = domainSiteRE.findall(s)
 	for m in mList:	
@@ -46,7 +58,18 @@ def deserializeSites(s):
 		for metaPair in metaPairs:
 			meta.append((decode(metaPair[0]),decode(metaPair[1])))
 		content = decode(m[2])
-		newsite = site((title, meta, content))
+		words = []
+		wordCounts = []
+		rawWords = wordRE.findall(decode(m[3]))
+		for w in rawWords:
+			bytes = decode(w[0])
+			HBytes = bytes[6:]
+			QBytes = '\x00\x00'+bytes[:6]
+			wordId = struct.unpack('Q', QBytes)[0]
+			wordCount = struct.unpack('H',HBytes)[0]
+			words.append(indexerInstance.GetWord(wordId))
+			wordCounts.append(wordCount)
+		newsite = site((title, meta, content), (words, wordCounts))
 		siteList.append(newsite)
 	return siteList
 
@@ -79,13 +102,17 @@ class domain:
 				return True
 		return False
 
+		
+	def GetSitesWithWordId(self, id):
+		sites = [s for s in self.sites if any(w.id==id for w in s.sites)]
+		
 	def serialize(self):
-		result = "DOMAIN<"
-		result += base64.b64encode(self.name)+">SITES<"
+		result = "|"
+		result += encode(self.name)+"|"
 		sites = ""
 		for s in self.sites:
 			sites+=s.serialize()
-		result+=base64.b64encode(sites)+">"
+		result+=encode(sites)
 		return result
 		
 def deserializeDomain(s):
@@ -97,65 +124,57 @@ def deserializeDomain(s):
 	newDomain = domain(name, sites)
 	return newDomain
 
-def deserializeWord(s):	
-	m = wordRE.match(s)
-	if m == None:
-		return None
-	name = decode(m.group(1))
-	sites = dict()
-	siteMatches = wordSiteRE.findall(decode(m.group(2)))
-	for site in siteMatches:
-		sites[decode(site[0])] = int(site[1])
-	newWord = word(name, sites)
-	return newWord
+
 	
 class word:
-	def __init__(self, name, sites=dict()):
+	def __init__(self, name, id):
 		self.name = name
-		self.sites = sites
-		
-	def AddSite(self, domain, site):
-		if (domain+site) not in self.sites:
-			self.sites[domain+site] = 0
-		self.sites[domain+site] += 1
+		self.id = id
 	
 	def serialize(self):
-		result = "WORD<"+base64.b64encode(self.name)+">SITES<"
-		sites = ""
-		for s in self.sites:
-			sites+=base64.b64encode(s)+"<"+str(self.sites[s])+">"
-		result+=base64.b64encode(sites)+">"
+		result = encode(self.name)
 		return result
-		
+
+def deserializeWord(s,id):	
+	name = decode(s)
+	newWord = word(name, id)
+	return newWord
+	
 class indexer:
 	def __init__(self):
 		self.domains = dict()
-		self.words = dict()
+		self.words = []
+		self.numwords = 0
+		
+		print("loading word index...")
+		if os.path.isfile("index/domaindb.db")==True:
+			with open("index/worddb.db", "r") as f:
+				wordsRaw = f.readlines()
+				
+				for raw in wordsRaw:
+					newWord = deserializeWord(raw,self.numwords)
+					if newWord != None:
+						self.words.append(newWord)
+						self.numwords+=1
+				f.close()
+			print("Done")
+		else:
+			print("Running for the first first time, wont load word index")
 		
 		print("loading domain index...")
 		if os.path.isfile("index/domaindb.db") == True:
 			with open("index/domaindb.db", "r") as f:
 				domainsRaw = f.readlines()
 				for raw in domainsRaw:
-					newDomain = deserializeDomain(raw)
+					newDomain = deserializeDomain(self, raw)
 					if newDomain != None:
 						self.domains[newDomain.name] = newDomain
 				f.close()
 			print("Done")
 		else:
 			print("Running for the first first time, wont load domain index")
-		print("loading word index...")
-		if os.path.isfile("index/domaindb.db")==True:
-			with open("index/worddb.db", "r") as f:
-				wordsRaw = f.readlines()
-				for raw in wordsRaw:
-					newWord = deserializeWord(raw)
-					if newWord != None:
-						self.words[newWord.name] = newWord
-				f.close()
-			print("Done")
-		else:
-			print("Running for the first first time, wont load word index")
+		
+	
 	def Save(self):
 		print("saving domain index...")
 		with open("index/domaindb.db", "w") as f:
@@ -170,12 +189,22 @@ class indexer:
 			f.close()
 		print("done!")
 		
-	def GetWord(self, name):
-		if name not in self.words:
-			self.words[name] = word(name)
-		return self.words[name]
+	def GetWord(self, id):
+		if id not in self.words:
+			return None
+		return self.words[id]
+	
+	def GetWordName(self, name):
 		
 	def GetDomain(self, name):
 		if name not in self.domains:
 			self.domains[name] = domain(name)
 		return self.domains[name]
+		
+	def GetSitesForWord(self, wordname):
+		result = []
+		for w in self.words:
+			if w.name==wordname:
+				id = w.id
+				sites = []
+				
