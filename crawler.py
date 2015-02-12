@@ -6,15 +6,18 @@ import re
 import thread
 import time
 
+tagContentPart = ur'[\w\s="\/\\:;,()\[\]\#?&%@.!+-]*'
+
 metaRE = re.compile(ur'<\s*meta\s*name\s*=\s*"([\w\s]*)"\s*content\s*=\s*"([\w\s+#*.\'"@,-]*)')
-styleRE = re.compile(ur'<\s*style[\w\s="\/\\:;()\[\]@.!-]*>.*<\s*/\s*style[\w\s="\/\\:;()\[\]@.!-]*>', re.DOTALL)
-scriptRE = re.compile(ur'<\s*script[\w\s="\/\\:;()\[\]@.!-]*>.*<\s*/\s*script[\w\s="\/\\:;()\[\]@.!-]*>', re.DOTALL)
-tagRE = re.compile(ur'(<[\w\s="\/\\:;()\[\]@.!-]*>)')
+styleRE = re.compile(ur'<\s*style'+tagContentPart+'>.*<\s*/\s*style'+tagContentPart+'>', re.DOTALL)
+scriptRE = re.compile(ur'<\s*script'+tagContentPart+'>.*<\s*/\s*script'+tagContentPart+'>', re.DOTALL)
+tagRE = re.compile(ur'(<'+tagContentPart+'>)')
 #linkRE = re.compile(ur'https?://([\w@.-]*):?(\d*)?([\w@\/#?&=:.-]*)')
 linkRE = re.compile(ur'h?t?t?p?:?//([\w@.-]*):?(\d*)?([\w@\/\#?&=:.-]*)')
 localLinkTagRE = re.compile(ur'\s*href\s*=\s*"(/?[\w@?&=:.-]+[\w@?\/&=:.-]*)[\w@\/\#?&=:.-]*"')
 wordRE = re.compile(ur'(\w\w\w+)')
 titleRE = re.compile(ur'<\s*title\s*>\s*(.*)\s*<\s*\/\s*title\s*>')
+removeSpaceRE = re.compile(ur'(\s+)')
 NotAWord = ["", "\n", "\t"]
 
 class crawler:
@@ -58,10 +61,8 @@ class crawler:
 			if m != None:
 				title = m.group(1)
 			meta.append(("title", title))
-			#check if page has updated
-			if domainname not in self.domains:
-				self.domains[domainname] = self.indexer.GetDomain(domainname)	
-			d = self.domains[domainname]
+
+			d = self.indexer.GetDomain(domainname)
 			
 			ParseSite = False
 			if d.HasSite(sitename):
@@ -90,7 +91,8 @@ class crawler:
 					self.Input(domainname, port, m)
 				#remove tags (tag blocks need seperate magic :/)
 				textOnly = tagRE.sub("", scriptRE.sub("", styleRE.sub("", FewLinkContent)))
-				
+				textOnly = removeSpaceRE.sub(" ", textOnly)
+				#print textOnly
 				#get words
 				#regex way, seems to be slower
 				mlist = wordRE.findall(textOnly)
@@ -102,7 +104,7 @@ class crawler:
 					#DONT
 					#w.Save()
 			#done
-			print("DONE:"+domainname+sitename+" In "+unicode(time.time()-starttime)+"s")	
+			print("DONE:"+d.name+s.name+" In "+unicode(time.time()-starttime)+"s")	
 			if self.avtime != 0:
 				self.avtime += time.time()-starttime
 				self.avtime *= 0.5

@@ -93,17 +93,19 @@ def deserializeSites(indexerInstance,s):
 	return siteList
 
 class domain:
-	def __init__(self, name, sites=[]):
-		self.sites = sites
+	def __init__(self, name, Newsites):
+		self.sites = Newsites
 		self.name = name
-		
-		
+
 	def AddSite(self,name, meta, content):
 		newSite = site((name, meta, conent_hash(content)))
 		if newSite != None:
 			self.sites.append(newSite)
+		#print self.sites
 	
 	def HasSite(self, name):
+		#print self.name
+		#print self.sites
 		return any(s.name == name for s in self.sites)
 	
 	def GetSite(self, name):
@@ -129,10 +131,11 @@ class domain:
 	def serialize(self):
 		result = "|"
 		result += encode(self.name)+"|"
-		sites = ""
+		siteString = ""
 		for s in self.sites:
-			sites+=s.serialize()
-		result+=encode(sites)
+			siteString+=s.serialize()
+			#print self.name+s.name
+		result+=encode(siteString)
 		return result
 		
 def deserializeDomain(indexerInstance, s):
@@ -167,11 +170,9 @@ class indexer:
 		self.numwords = 0
 		
 		print("loading word index...")
-		if os.path.isfile("index/domaindb.db")==True:
+		if os.path.isfile("index/worddb.db")==True:
 			with open("index/worddb.db", "r") as f:
-				wordsRaw = f.readlines()
-				
-				for raw in wordsRaw:
+				for raw in f:
 					newWord = deserializeWord(raw,self.numwords)
 					if newWord != None:
 						self.words.append(newWord)
@@ -184,8 +185,7 @@ class indexer:
 		print("loading domain index...")
 		if os.path.isfile("index/domaindb.db") == True:
 			with open("index/domaindb.db", "r") as f:
-				domainsRaw = f.readlines()
-				for raw in domainsRaw:
+				for raw in f:
 					newDomain = deserializeDomain(self, raw)
 					if newDomain != None:
 						self.domains[newDomain.name] = newDomain
@@ -228,7 +228,7 @@ class indexer:
 	
 	def GetDomain(self, name):
 		if name not in self.domains:
-			self.domains[name] = domain(name)
+			self.domains[name] = domain(name, [])
 		return self.domains[name]
 		
 	def GetSitesForWord(self, wordname):
