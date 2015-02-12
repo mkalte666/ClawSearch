@@ -58,6 +58,13 @@ class fetcher:
 				if c=='':
 					break	
 			lenRE = re.compile(ur'Content-Length:\s*(\d*)')
+			typRE = re.compile(ur'Content-Type:\s*(\w*)')
+			m = typRE.search(result)
+			if m!= None:
+				if m.group(1)!="text":
+					return
+			else:
+				return
 			m = lenRE.search(result)
 			if m!= None:
 				result = result[0-int(m.group(1)):]

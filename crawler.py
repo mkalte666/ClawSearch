@@ -13,7 +13,7 @@ tagRE = re.compile(ur'(<[\w\s="\/\\:;()\[\]@.!-]*>)')
 #linkRE = re.compile(ur'https?://([\w@.-]*):?(\d*)?([\w@\/#?&=:.-]*)')
 linkRE = re.compile(ur'h?t?t?p?:?//([\w@.-]*):?(\d*)?([\w@\/\#?&=:.-]*)')
 localLinkTagRE = re.compile(ur'\s*href\s*=\s*"(/?[\w@?&=:.-]+[\w@?\/&=:.-]*)[\w@\/\#?&=:.-]*"')
-wordRE = re.compile(ur'(\w+)')
+wordRE = re.compile(ur'(\w\w\w+)')
 titleRE = re.compile(ur'<\s*title\s*>\s*(.*)\s*<\s*\/\s*title\s*>')
 NotAWord = ["", "\n", "\t"]
 
@@ -72,8 +72,8 @@ class crawler:
 				
 			#DONT, ONLY TESTING
 			#d.Save()
-			
-			if ParseSite == True:
+			s = d.GetSite(sitename)
+			if ParseSite == True and s!=None:
 				#fetch the links from the page
 				mlist = linkRE.findall(content)
 				for m in mlist:
@@ -98,10 +98,7 @@ class crawler:
 				#mlist = [e for e in textOnly.split(" ") if e not in NotAWord]
 				for m in mlist:
 					#create all the words!!
-					if m not in self.words:
-						self.words[m] = self.indexer.GetWord(m)
-					w = self.words[m]
-					w.AddSite(domainname, sitename)
+					s.AddWord(self.indexer, m)
 					#DONT
 					#w.Save()
 			#done

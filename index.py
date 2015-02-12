@@ -13,9 +13,9 @@ def conent_hash(str):
 	return _hasher.hexdigest()
 
 wordSiteRE = re.compile(ur'([A-Za-z0-9+-=\[\]]*)<(\d*)>')
-domainSiteRE = re.compile(ur'|([A-Za-z0-9+-=\[\]]*)|([A-Za-z0-9+-=\[\]]*)|([A-Za-z0-9+-=]*)|([A-Za-z0-9+-=]*)')
-domainRE = re.compile(ur'|([A-Za-z0-9+-=\[\]]*)|([A-Za-z0-9+-=]*)')
-wordRE = re.compile(ur'|([A-Za-z0-9+-=]*)')
+domainSiteRE = re.compile(ur'\|([A-Za-z0-9+-=\[\]]*)\|([A-Za-z0-9+-=\[\]]*)\|([A-Za-z0-9+-=]*)\|([A-Za-z0-9+-=]*)')
+domainRE = re.compile(ur'\|([A-Za-z0-9+-=\[\]]*)\|([A-Za-z0-9+-=]*)')
+wordRE = re.compile(ur'\|([A-Za-z0-9+-=]*)')
 metaRE = re.compile(ur'([A-Za-z0-9+-=]*)\[([A-Za-z0-9+-=]*)\]')
 
 def decode(s):
@@ -25,7 +25,7 @@ def encode(s):
 	return (base64.b64encode(s))
 
 class site:
-	def __init__(self, data, worddata):
+	def __init__(self, data, worddata=([],[])):
 		self.name = data[0]
 		self.content = data[2]
 		self.meta = data[1]
@@ -41,11 +41,30 @@ class site:
 		result += encode(self.content)+"|"
 		worddata = ""
 		for i in range(0,len(self.words)):
-			Qbytes = struct.pack('Q', bytes, self.words[i].id)
-			Hbytes = struct.pack('H', bytes, self.wordCounts[i])
-			worddata += "|"+encode(Qbytes[2:]+Hbytes)
+			Qbytes = struct.pack('Q', self.words[i].id)
+			#print self.words[i].id
+			#print(ord(Qbytes[0]))
+			Hbytes = struct.pack('H', self.wordCounts[i])
+			worddata += "|"+encode(Qbytes[:6]+Hbytes)
 		result+=encode(worddata)
 		return result
+	
+	def AddWord(self, indexer, name):
+		for i in range(0,len(self.words)):
+			if self.words[i].name == name:
+				self.wordCounts[i]+=1
+				return
+		newWord = indexer.GetWordByName(name)
+		if newWord==None:
+			newWord = indexer.AddWord(name)
+		self.words.append(newWord)
+		self.wordCounts.append(1)
+	
+	def GetRankByWord(self, name):
+		for i in range(0,len(self.words)):
+			if self.words[i].name == name:
+				return self.wordCounts[i]
+		return 0
 
 def deserializeSites(indexerInstance,s):
 	siteList = []
@@ -62,9 +81,9 @@ def deserializeSites(indexerInstance,s):
 		wordCounts = []
 		rawWords = wordRE.findall(decode(m[3]))
 		for w in rawWords:
-			bytes = decode(w[0])
+			bytes = decode(w)
 			HBytes = bytes[6:]
-			QBytes = '\x00\x00'+bytes[:6]
+			QBytes = bytes[:6]+'\x00\x00'
 			wordId = struct.unpack('Q', QBytes)[0]
 			wordCount = struct.unpack('H',HBytes)[0]
 			words.append(indexerInstance.GetWord(wordId))
@@ -104,7 +123,8 @@ class domain:
 
 		
 	def GetSitesWithWordId(self, id):
-		sites = [s for s in self.sites if any(w.id==id for w in s.sites)]
+		sites = [s for s in self.sites if any(w.id==id for w in s.words)]
+		return sites
 		
 	def serialize(self):
 		result = "|"
@@ -115,12 +135,12 @@ class domain:
 		result+=encode(sites)
 		return result
 		
-def deserializeDomain(s):
+def deserializeDomain(indexerInstance, s):
 	m = domainRE.match(s)
 	if m==None:
 		return None
 	name = decode(m.group(1))
-	sites = deserializeSites(decode(m.group(2)))
+	sites = deserializeSites(indexerInstance, decode(m.group(2)))
 	newDomain = domain(name, sites)
 	return newDomain
 
@@ -185,17 +205,27 @@ class indexer:
 		print("saving word index...")
 		with open("index/worddb.db", "w") as f:
 			for w in self.words:
-				f.write(self.words[w].serialize()+"\n")
+				f.write(w.serialize()+"\n")
 			f.close()
 		print("done!")
 		
 	def GetWord(self, id):
-		if id not in self.words:
+		if id >= len(self.words) or id < 0:
 			return None
 		return self.words[id]
 	
-	def GetWordName(self, name):
+	def GetWordByName(self, name):
+		for w in self.words:
+			if w.name == name:
+				return w
+		return None
 		
+	def AddWord(self, name):
+		newWord = word(name, self.numwords)
+		self.words.append(newWord)
+		self.numwords+=1
+		return newWord
+	
 	def GetDomain(self, name):
 		if name not in self.domains:
 			self.domains[name] = domain(name)
@@ -203,8 +233,13 @@ class indexer:
 		
 	def GetSitesForWord(self, wordname):
 		result = []
-		for w in self.words:
-			if w.name==wordname:
-				id = w.id
-				sites = []
+		w = self.GetWordByName(wordname)
+		if w!=None:
+			for k in self.domains:
+				d = self.domains[k]
+				dsites = d.GetSitesWithWordId(w.id)
+				if len(dsites)>0:
+					result.append((d,dsites))
+		return result
+				
 				

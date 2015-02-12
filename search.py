@@ -22,8 +22,9 @@ def _mutator(str):
 	return out
 
 class ratedSite:
-	def __init__(self, name, title=""):
-		self.name = name
+	def __init__(self, site, domain, title=""):
+		self.site = site
+		self.domain = domain
 		self.rating = 0
 		self.title = title
 		
@@ -40,29 +41,12 @@ class search:
 		self.peaksites = int(maxsites*maxPeakFactor)
 		searchWords = q.split(" ")
 		self.results = []
-		for w in searchWords:
-			#do some word mutation, too. if the mutation is the same as the input it causes the word to be loaded double
-			#this is ok since it causes a the right spelling to have the most right in the rating
-			#for mutated in _mutator(w):
-			#	self.words.append(index.word(mutated))
-			self.words.append(self.indexer.GetWord(w))
-			
-		firstWord = self.words[0]
-		for s in firstWord.sites:
-			if s not in self.sites:
-				self.sites[s] = ratedSite(s)
-			self.sites[s].Inc(firstWord.sites[s])
-			if len(self.sites)>=self.peaksites and self.maxsites:
-				break
-			
-		for word in self.words[1:]:
-			for s in self.sites:
-				isSomewhere = False
-				if s not in word.sites:
-					del self.sites[s]
-					break
-				self.sites[s].Inc(word.sites[s])
 		
+		firstWord = searchWords[0]
+		wordSites = self.indexer.GetSitesForWord(firstWord)
+		for d in wordSites:
+			for s in d[1]:
+				self.sites[d[0].name+s.name] = ratedSite(s, d[0])
 		
 		if len(self.sites) > self.maxsites and self.maxsites != 0:
 			sortedKeys = sorted(self.sites, key=lambda rs: self.sites[rs].rating, reverse=True)[:self.maxsites]
@@ -72,12 +56,7 @@ class search:
 			self.sites = outdict
 		#search the meta data of each page
 		for s in self.sites:
-			m = splitRE.search(self.sites[s].name)
-			dname = m.group(1)
-			sname = m.group(3)
-			d = self.indexer.GetDomain(dname)
-			
-			ds = d.GetSite(sname)
+			ds = self.sites[s].site
 			if ds == None:
 				continue
 			meta = ds.meta
@@ -92,15 +71,17 @@ class search:
 						if v.find(mutated)!=-1:
 							self.sites[s].Inc(5)	
 					
+		
+		
 		sortedList = sorted(self.sites, key=lambda rs: self.sites[rs].rating, reverse=True)
 		
 		for key in sortedList:
 			title = cgi.escape(self.sites[key].title)
 			if title == "":
-				title = cgi.escape(self.sites[key].name)
+				title = cgi.escape(self.sites[key].domain.name+self.sites[key].site.name)
 			if len(title) > 100:
 				title = title[:93]+"..."
-			res = "<a href=\"http://"+cgi.escape(self.sites[key].name)+"\" target=\"_blank\">"+title+"</a> Rating: "+str(self.sites[key].rating)+"<br>"
+			res = "<a href=\"http://"+cgi.escape(self.sites[key].domain.name+self.sites[key].site.name)+"\" target=\"_blank\">"+title+"</a> Rating: "+str(self.sites[key].rating)+"<br>"
 			#print(self.sites[key].title)
 			self.results.append(res)
 		

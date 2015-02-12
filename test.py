@@ -2,7 +2,7 @@
 import crawler
 import signal
 import sys
-c = crawler.crawler(False, 200000, 25)
+c = crawler.crawler(False, 50, 25)
 c.Input("blog.fefe.de", 80, "/")
 c.Input("de.wikipedia.org", 80, "/wiki/Programmierung")
 c.Input("stackoverflow.com", 80, "/")
